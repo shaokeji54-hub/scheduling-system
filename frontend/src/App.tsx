@@ -13,6 +13,7 @@ import LeaveManagementPage from "./pages/LeaveManagementPage";
 import MySchedulePage from "./pages/MySchedulePage";
 import PositionManagementPage from "./pages/PositionManagementPage";
 import AdjustmentLogPage from "./pages/AdjustmentLogPage";
+import ProductivityMappingPage from "./pages/ProductivityMappingPage";
 import AppLayout from "./components/AppLayout";
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
@@ -36,7 +37,8 @@ function AppRoutes() {
         <Route path="leaves" element={<ProtectedRoute roles={["scheduler"]}><LeaveManagementPage /></ProtectedRoute>} />
         <Route path="my-schedule" element={<ProtectedRoute><MySchedulePage /></ProtectedRoute>} />
         <Route path="adjustment-logs" element={<ProtectedRoute roles={["scheduler"]}><AdjustmentLogPage /></ProtectedRoute>} />
-          <Route path="positions" element={<ProtectedRoute roles={["scheduler"]}><PositionManagementPage /></ProtectedRoute>} />
+        <Route path="positions" element={<ProtectedRoute roles={["scheduler"]}><PositionManagementPage /></ProtectedRoute>} />
+        <Route path="productivity" element={<ProtectedRoute roles={["scheduler"]}><ProductivityMappingPage /></ProtectedRoute>} />
       </Route>
     </Routes>
   );

@@ -3,7 +3,7 @@ import { Layout, Menu, Button, theme } from "antd";
 import {
   DashboardOutlined, TeamOutlined, BarChartOutlined,
   FieldNumberOutlined, CalendarOutlined,
-  FileTextOutlined, LogoutOutlined, UserOutlined,
+  FileTextOutlined, LogoutOutlined, UserOutlined, PartitionOutlined,
 } from "@ant-design/icons";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -19,6 +19,7 @@ const schedulerMenuItems = [
   { key: "/schedule-board", icon: <CalendarOutlined />, label: "排班面板" },
   { key: "/leaves", icon: <FileTextOutlined />, label: "休假管理" },
   { key: "/adjustment-logs", icon: <BarChartOutlined />, label: "操作日志" },
+  { key: "/productivity", icon: <PartitionOutlined />, label: "人力映射" },
 ];
 
 const employeeMenuItems = [

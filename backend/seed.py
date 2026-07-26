@@ -10,12 +10,20 @@ async def seed():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     async with async_session() as db:
+        from app.models.skill import Skill
+        from app.models.employee_skill import employee_skills
         positions = {}
         for name in ['投诉组', '咨询组', '销售组']:
             pos = Position(name=name, description=name)
             db.add(pos)
             await db.flush()
             positions[name] = pos
+        skills = {}
+        for name in ['投诉处理能力', '咨询解答能力', '销售转化能力']:
+            sk = Skill(name=name, description=name)
+            db.add(sk)
+            await db.flush()
+            skills[name] = sk
         admin = Employee(
             name='管理员', email='admin@test.com',
             hashed_password=AuthService.hash_password('admin123'),
@@ -30,13 +38,14 @@ async def seed():
             ('孙七', 'sunqi@test.com', '销售组', ['投诉组']),
             ('周八', 'zhouba@test.com', '销售组', []),
         ]
-        for name, email, pos_name, skills in employees:
+        for name, email, pos_name, skill_names in employees:
             emp = Employee(
                 name=name, email=email,
                 hashed_password=AuthService.hash_password('123456'),
                 role='employee', primary_position_id=positions[pos_name].id,
             )
-            emp.skills = [positions[s] for s in skills]
+            pos_to_skill = {'投诉组': '投诉处理能力', '咨询组': '咨询解答能力', '销售组': '销售转化能力'}
+            emp.skills = [skills[pos_to_skill[s]] for s in skill_names if s in pos_to_skill]
             db.add(emp)
             await db.flush()
         await db.commit()

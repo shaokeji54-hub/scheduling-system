@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
@@ -25,9 +25,29 @@ async def list_weeks(db: Annotated[AsyncSession, Depends(get_db)]):
     return result.scalars().all()
 
 
-@router.post("/generate", response_model=ScheduleGenerateResponse)
+@router.post("/generate")
 async def generate_schedule(req: ScheduleGenerateRequest, db: Annotated[AsyncSession, Depends(get_db)]):
-    result = await SchedulerService.run_engine(db, req.week_start)
+    # Delete existing week if re-generating
+    try:
+        existing = await db.execute(
+            select(ScheduleWeek).where(ScheduleWeek.week_start == req.week_start)
+        )
+        existing_week = existing.scalar_one_or_none()
+        if existing_week:
+            from sqlalchemy import delete
+            await db.execute(
+                delete(ShiftAssignment).where(ShiftAssignment.schedule_week_id == existing_week.id)
+            )
+            await db.delete(existing_week)
+            await db.flush()
+    except Exception:
+        pass
+
+    try:
+        result = await SchedulerService.run_engine(db, req.week_start)
+    except Exception as e:
+        import traceback; tb = traceback.format_exc()
+        return {"success": False, "message": str(e), "debug": tb}
 
     assignments = []
     for a in result.assignments:
@@ -42,7 +62,13 @@ async def generate_schedule(req: ScheduleGenerateRequest, db: Annotated[AsyncSes
             status="preliminary", warning_flags=",".join(a.warning_flags),
         ))
 
-    gaps = [CoverageGap(**g) for g in result.coverage_gaps]
+    gaps = []
+    for g in result.coverage_gaps:
+        if "position_name" not in g:
+            pos_result = await db.execute(select(Position).where(Position.id == g.get("position_id")))
+            p = pos_result.scalar_one_or_none()
+            g["position_name"] = p.name if p else ""
+        gaps.append(CoverageGap(**g))
     warnings = [WarningItem(**w) for w in result.warnings]
 
     return ScheduleGenerateResponse(

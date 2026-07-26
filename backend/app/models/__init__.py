@@ -9,6 +9,8 @@ from app.models.leave import LeaveRequest
 from app.models.unavailable_time import UnavailableTime
 from app.models.schedule import ShiftAssignment, ScheduleWeek
 from app.models.adjustment_log import AdjustmentLog
+from app.models.productivity_mapping import ProductivityMapping
+from app.models.position_timeslot import PositionTimeSlot
 
 __all__ = [
     "Position",
@@ -23,4 +25,6 @@ __all__ = [
     "ShiftAssignment",
     "ScheduleWeek",
     "AdjustmentLog",
+    "ProductivityMapping",
+    "PositionTimeSlot",
 ]

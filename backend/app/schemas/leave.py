@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict
 class LeaveRequestCreate(BaseModel):
     leave_date: date
     leave_type: str = "annual"
+    employee_id: int | None = None
+    creator_type: str = "employee"
 
 
 class LeaveRequestResponse(BaseModel):
@@ -17,6 +19,8 @@ class LeaveRequestResponse(BaseModel):
     status: str
     rejection_reason: str | None = None
     submit_feedback: str | None = None
+    creator_type: str = "employee"
+    creator_name: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

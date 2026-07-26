@@ -1,7 +1,7 @@
 from datetime import date, time, timedelta
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.employee import Employee
+from sqlalchemy.orm import selectinload
 from app.models.employee import Employee
 
 
@@ -18,7 +18,9 @@ class SchedulerService:
     @staticmethod
     async def prepare_data(db: AsyncSession, week_start: date) -> dict:
         """Load all data needed for scheduling for a week."""
-        employees_result = await db.execute(select(Employee).where(Employee.is_active == 1))
+        employees_result = await db.execute(
+            select(Employee).where(Employee.is_active == 1).options(selectinload(Employee.skills))
+        )
         employees = employees_result.scalars().all()
 
         emp_slots = []

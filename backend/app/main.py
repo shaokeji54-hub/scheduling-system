@@ -1,4 +1,4 @@
-﻿from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="部门排班系统",
     description="Department Scheduling System",
-    version="1.0.0",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -40,6 +40,8 @@ app.include_router(leave_router)
 app.include_router(unavailable_router)
 app.include_router(schedule_router)
 app.include_router(adjustment_log_router)
+app.include_router(productivity_mapping_router)
+app.include_router(position_timeslot_router)
 
 
 @app.get("/api/health")

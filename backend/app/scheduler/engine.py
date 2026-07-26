@@ -154,8 +154,8 @@ class SchedulingEngine:
                 if not self._is_available(eid, slot_date, slot_hour):
                     continue
                 s_start = time(hour=slot_hour, minute=0)
-                s_end_hour = min(slot_hour + self.DEFAULT_SHIFT_LENGTH, 24)
-                s_end = time(hour=s_end_hour, minute=0)
+                s_end_hour = min(slot_hour + self.DEFAULT_SHIFT_LENGTH, 23)
+                s_end = time(hour=max(0, min(s_end_hour, 23)), minute=0)
                 s_hours = self._hours_between(s_start, s_end)
                 if self.assigned_hours[eid][slot_date] + s_hours > self.MAX_DAILY_HOURS:
                     continue

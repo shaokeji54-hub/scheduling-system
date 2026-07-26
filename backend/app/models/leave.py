@@ -12,6 +12,8 @@ class LeaveRequest(Base):
     status = Column(String(20), nullable=False, default="pending", comment="pending | approved | rejected")
     rejection_reason = Column(Text, nullable=True, comment="拒绝原因")
     submit_feedback = Column(Text, nullable=True, comment="提交时预检反馈")
+    creator_type = Column(String(20), nullable=False, default="employee", comment="employee | scheduler")
+    creator_id = Column(Integer, ForeignKey("employees.id"), nullable=True, comment="创建人(排班员)ID")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
