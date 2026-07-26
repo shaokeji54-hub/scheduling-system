@@ -1,0 +1,47 @@
+﻿"""Seed data script."""
+
+import asyncio, sys
+sys.path.insert(0, r'D:\codex\scheduling-system\backend')
+from app.database import engine, Base, async_session
+from app.models import *
+from app.services.auth import AuthService
+
+async def seed():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with async_session() as db:
+        positions = {}
+        for name in ['投诉组', '咨询组', '销售组']:
+            pos = Position(name=name, description=name)
+            db.add(pos)
+            await db.flush()
+            positions[name] = pos
+        admin = Employee(
+            name='管理员', email='admin@test.com',
+            hashed_password=AuthService.hash_password('admin123'),
+            role='scheduler', primary_position_id=positions['投诉组'].id,
+        )
+        db.add(admin)
+        employees = [
+            ('张三', 'zhangsan@test.com', '投诉组', ['咨询组']),
+            ('李四', 'lisi@test.com', '投诉组', []),
+            ('王五', 'wangwu@test.com', '咨询组', ['销售组']),
+            ('赵六', 'zhaoliu@test.com', '咨询组', []),
+            ('孙七', 'sunqi@test.com', '销售组', ['投诉组']),
+            ('周八', 'zhouba@test.com', '销售组', []),
+        ]
+        for name, email, pos_name, skills in employees:
+            emp = Employee(
+                name=name, email=email,
+                hashed_password=AuthService.hash_password('123456'),
+                role='employee', primary_position_id=positions[pos_name].id,
+            )
+            emp.skills = [positions[s] for s in skills]
+            db.add(emp)
+            await db.flush()
+        await db.commit()
+        print('Seed complete!')
+        print('Admin: admin@test.com / admin123')
+        print('Employees: any email / 123456')
+
+asyncio.run(seed())
