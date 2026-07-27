@@ -37,6 +37,18 @@ async def seed():
             ('赵六', 'zhaoliu@test.com', '咨询组', []),
             ('孙七', 'sunqi@test.com', '销售组', ['投诉组']),
             ('周八', 'zhouba@test.com', '销售组', []),
+            ('吴九', 'wujiu@test.com', '投诉组', ['咨询组', '销售组']),
+            ('郑十', 'zhengshi@test.com', '咨询组', ['投诉组']),
+            ('陈晓', 'chenxiao@test.com', '销售组', ['咨询组']),
+            ('林琳', 'linlin@test.com', '投诉组', []),
+            ('黄明', 'huangming@test.com', '咨询组', ['投诉组', '销售组']),
+            ('杨芳', 'yangfang@test.com', '销售组', []),
+            ('刘强', 'liuqiang@test.com', '投诉组', ['销售组']),
+            ('何丽', 'heli@test.com', '咨询组', []),
+            ('马超', 'machao@test.com', '销售组', ['投诉组', '咨询组']),
+            ('高远', 'gaoyuan@test.com', '投诉组', []),
+            ('宋佳', 'songjia@test.com', '咨询组', ['销售组']),
+            ('唐亮', 'tangliang@test.com', '销售组', ['咨询组']),
         ]
         for name, email, pos_name, skill_names in employees:
             emp = Employee(

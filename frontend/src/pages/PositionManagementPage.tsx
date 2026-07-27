@@ -84,7 +84,7 @@ export default function PositionManagementPage() {
       title: "需求能力",
       key: "skills",
       render: (_: any, record: any) => {
-        const skillNames = allSkills.filter(s => record._skill_ids?.includes(s.id)).map(s => s.name);
+        const skillNames = allSkills.filter(s => record.skill_ids?.includes(s.id)).map(s => s.name);
         return skillNames.length > 0
           ? skillNames.map((n: string) => <Tag key={n}>{n}</Tag>)
           : <Tag color="orange">未设置</Tag>;

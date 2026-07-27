@@ -1,4 +1,4 @@
-"""
+﻿"""
 Scheduling engine with hard-constraint enforcement and advisory rule warnings.
 """
 from dataclasses import dataclass, field
@@ -47,6 +47,7 @@ class Assignment:
     shift_start: time
     shift_end: time
     warning_flags: list[str] = field(default_factory=list)
+    is_overnight: bool = False
 
 
 @dataclass
@@ -128,6 +129,16 @@ class SchedulingEngine:
                 reasons.append(str(r.date) + ' pos#' + str(r.position_id) + ' h' + str(r.hour) + ': need ' + str(r.needed) + ', only ' + str(available))
         return reasons
 
+    def _calc_shift_end(self, slot_hour):
+        """Calculate end time and overnight flag for a shift starting at slot_hour."""
+        raw_end = slot_hour + self.DEFAULT_SHIFT_LENGTH
+        if raw_end > 24:
+            return time(hour=raw_end - 24, minute=0), True
+        elif raw_end == 24:
+            return time(hour=0, minute=0), True
+        else:
+            return time(hour=raw_end, minute=0), False
+
     def generate(self):
         infeasible = self._pre_check_feasibility()
         if infeasible:
@@ -140,6 +151,11 @@ class SchedulingEngine:
         coverage = defaultdict(int)
         assignments = []
         warnings = []
+
+        position_day_demand = defaultdict(int)
+        for r in self.requirements:
+            position_day_demand[(r.position_id, r.date)] += r.needed
+
         sorted_slots = sorted(demand.keys(), key=lambda s: (-demand[s], s[1], s[2]))
 
         for slot_pos, slot_date, slot_hour in sorted_slots:
@@ -154,23 +170,39 @@ class SchedulingEngine:
                 if not self._is_available(eid, slot_date, slot_hour):
                     continue
                 s_start = time(hour=slot_hour, minute=0)
-                s_end_hour = min(slot_hour + self.DEFAULT_SHIFT_LENGTH, 23)
-                s_end = time(hour=max(0, min(s_end_hour, 23)), minute=0)
-                s_hours = self._hours_between(s_start, s_end)
+                s_end, is_overnight = self._calc_shift_end(slot_hour)
+                s_hours = self.DEFAULT_SHIFT_LENGTH
+
                 if self.assigned_hours[eid][slot_date] + s_hours > self.MAX_DAILY_HOURS:
-                    continue
+                    # For overnight shifts, the hours are split across two days
+                    if is_overnight and self.assigned_hours[eid][slot_date] + 4 <= self.MAX_DAILY_HOURS:
+                        pass  # Allow overnight with partial first-day count
+                    else:
+                        continue
                 if self._consecutive_count(eid, slot_date) > self.MAX_CONSECUTIVE_DAYS:
                     continue
                 new_weekly = self.weekly_hours[eid] + s_hours
                 new_ot = max(0, new_weekly - self.MAX_WEEKLY_HOURS) + self.existing_monthly_overtime.get(eid, 0)
                 if new_ot > self.MAX_MONTHLY_OVERTIME_HARD:
                     continue
-                is_primary = 0 if emp.primary_position_id == slot_pos else 1
-                candidates.append((eid, s_start, s_end, s_hours, is_primary, self.weekly_hours[eid]))
 
-            candidates.sort(key=lambda c: (c[4], c[5]))
+                is_primary = emp.primary_position_id == slot_pos
+                other_gap = 0
+                if not is_primary:
+                    for other_pos in set([emp.primary_position_id] + emp.skill_ids):
+                        if other_pos == slot_pos:
+                            continue
+                        total_needed = position_day_demand.get((other_pos, slot_date), 0)
+                        total_covered = sum(
+                            coverage[(other_pos, slot_date, h)]
+                            for h in range(9, 18)
+                        )
+                        other_gap = max(other_gap, total_needed - total_covered)
+                candidates.append((eid, s_start, s_end, s_hours, is_primary, other_gap, self.weekly_hours[eid], is_overnight))
+
+            candidates.sort(key=lambda c: (0 if c[4] else 1, -c[5], c[6]))
             assigned_count = 0
-            for eid, s_start, s_end, s_hours, _, _ in candidates:
+            for eid, s_start, s_end, s_hours, _, _, _, is_overnight in candidates:
                 if assigned_count >= needed:
                     break
                 emp = self.employees[eid]
@@ -179,16 +211,30 @@ class SchedulingEngine:
                 if new_ot > self.MAX_MONTHLY_OVERTIME_HARD:
                     continue
                 flags = []
-                self.assigned_hours[eid][slot_date] += s_hours
+                self.assigned_hours[eid][slot_date] += min(s_hours, 16)  # overnight partial
                 self.work_dates_by_emp[eid].add(slot_date)
+                if is_overnight:
+                    self.work_dates_by_emp[eid].add(slot_date + timedelta(days=1))
                 self.weekly_hours[eid] += s_hours
                 self.last_shift_end[eid][slot_date] = s_end
-                for h in range(s_start.hour, s_end.hour):
-                    coverage[(slot_pos, slot_date, h)] += 1
+
+                # Coverage: regular hours + overnight hours
+                if is_overnight:
+                    # Cover from start_hour to 24 on the start date
+                    for h in range(s_start.hour, 24):
+                        coverage[(slot_pos, slot_date, h)] += 1
+                    # Cover from 0 to end_hour on the next day
+                    for h in range(0, s_end.hour):
+                        coverage[(slot_pos, slot_date + timedelta(days=1), h)] += 1
+                else:
+                    for h in range(s_start.hour, s_end.hour):
+                        coverage[(slot_pos, slot_date, h)] += 1
+
                 consec = self._consecutive_count(eid, slot_date)
                 if consec == self.MAX_CONSECUTIVE_DAYS:
                     flags.append('连续工作6天')
                     warnings.append(dict(employee_id=eid, employee_name=emp.name, warning_type='consecutive_6_days', detail=emp.name + ' ' + str(slot_date) + ' 第6天'))
+
                 prev_end = self.last_shift_end[eid].get(slot_date - timedelta(days=1))
                 if prev_end:
                     prev_dt = datetime.combine(slot_date, prev_end)
@@ -196,18 +242,24 @@ class SchedulingEngine:
                     if (curr_dt - prev_dt).total_seconds() / 3600 < self.MIN_SHIFT_INTERVAL_HOURS:
                         flags.append('班次间隔<11h')
                         warnings.append(dict(employee_id=eid, employee_name=emp.name, warning_type='short_interval', detail=emp.name + ' ' + str(slot_date) + ' 间隔不足11h'))
+
                 month_ot = self.existing_monthly_overtime.get(eid, 0) + max(0, self.weekly_hours[eid] - self.MAX_WEEKLY_HOURS)
                 if month_ot > self.MAX_MONTHLY_OVERTIME_ADVISORY:
                     flags.append('月加班>30h')
                     warnings.append(dict(employee_id=eid, employee_name=emp.name, warning_type='monthly_overtime_30', detail=emp.name + ' 当月加班' + format(month_ot, '.1f') + 'h'))
-                assignments.append(Assignment(employee_id=eid, position_id=slot_pos, date=slot_date, shift_start=s_start, shift_end=s_end, warning_flags=flags))
+
+                assignments.append(Assignment(
+                    employee_id=eid, position_id=slot_pos, date=slot_date,
+                    shift_start=s_start, shift_end=s_end,
+                    warning_flags=flags, is_overnight=is_overnight,
+                ))
                 assigned_count += 1
 
         gaps = []
         for r in self.requirements:
             actual = coverage.get((r.position_id, r.date, r.hour), 0)
             if actual < r.needed:
-                gaps.append(dict(position_id=r.position_id, date=str(r.date), hour=r.hour, required=r.needed, actual=actual))
+                gaps.append(dict(position_id=r.position_id, date=r.date, hour=r.hour, required=r.needed, actual=actual))
 
         msg = 'Schedule generated'
         if gaps:

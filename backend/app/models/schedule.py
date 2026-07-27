@@ -14,6 +14,7 @@ class ShiftAssignment(Base):
     status = Column(String(20), nullable=False, default="preliminary", comment="preliminary | confirmed | adjusted")
     schedule_week_id = Column(Integer, ForeignKey("schedule_weeks.id"), nullable=True)
     warning_flags = Column(String(255), default="", comment="建议规则标注, comma separated")
+    is_overnight = Column(Integer, default=0, comment="是否跨夜班次(结束时间在次日)")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -25,7 +26,7 @@ class ScheduleWeek(Base):
     __tablename__ = "schedule_weeks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    week_start = Column(Date, nullable=False, unique=True, comment="周起始日(周一)")
+    week_start = Column(Date, nullable=False, unique=True, comment="周起始日(周六)")
     status = Column(String(20), nullable=False, default="draft", comment="draft | confirmed | preliminary")
     created_by = Column(Integer, ForeignKey("employees.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

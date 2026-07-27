@@ -15,6 +15,7 @@ export default function EmployeeManagementPage() {
   const [skillEmpName, setSkillEmpName] = useState("");
   const [empSkills, setEmpSkills] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [editingEmp, setEditingEmp] = useState<any>(null);
   const [form] = Form.useForm();
 
   const load = async () => {

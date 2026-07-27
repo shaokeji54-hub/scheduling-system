@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
@@ -27,7 +27,6 @@ async def list_weeks(db: Annotated[AsyncSession, Depends(get_db)]):
 
 @router.post("/generate")
 async def generate_schedule(req: ScheduleGenerateRequest, db: Annotated[AsyncSession, Depends(get_db)]):
-    # Delete existing week if re-generating
     try:
         existing = await db.execute(
             select(ScheduleWeek).where(ScheduleWeek.week_start == req.week_start)
@@ -60,6 +59,7 @@ async def generate_schedule(req: ScheduleGenerateRequest, db: Annotated[AsyncSes
             position_id=a.position_id, position_name=pos.name if pos else "",
             date=a.date, shift_start=a.shift_start, shift_end=a.shift_end,
             status="preliminary", warning_flags=",".join(a.warning_flags),
+            is_overnight=a.is_overnight,
         ))
 
     gaps = []
@@ -98,6 +98,7 @@ async def get_week_schedule(week_start: str, db: Annotated[AsyncSession, Depends
             position_id=a.position_id, position_name=pos.name if pos else "",
             date=a.date, shift_start=a.shift_start, shift_end=a.shift_end,
             status=a.status, warning_flags=a.warning_flags,
+            is_overnight=bool(a.is_overnight),
             created_at=a.created_at, updated_at=a.updated_at,
         ))
     return items
@@ -117,6 +118,8 @@ async def update_assignment(assignment_id: int, data: ShiftAssignmentUpdate, db:
         a.position_id = data.position_id
     if data.status is not None:
         a.status = data.status
+    if data.is_overnight is not None:
+        a.is_overnight = 1 if data.is_overnight else 0
     await db.flush()
     await db.refresh(a)
 
@@ -129,8 +132,20 @@ async def update_assignment(assignment_id: int, data: ShiftAssignmentUpdate, db:
         position_id=a.position_id, position_name=pos.name if pos else "",
         date=a.date, shift_start=a.shift_start, shift_end=a.shift_end,
         status=a.status, warning_flags=a.warning_flags,
+        is_overnight=bool(a.is_overnight),
         created_at=a.created_at, updated_at=a.updated_at,
     )
+
+
+@router.delete("/assignments/{assignment_id}")
+async def delete_assignment(assignment_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+    result = await db.execute(select(ShiftAssignment).where(ShiftAssignment.id == assignment_id))
+    a = result.scalar_one_or_none()
+    if not a:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    await db.delete(a)
+    await db.flush()
+    return {"ok": True}
 
 
 @router.post("/assignments", response_model=ShiftAssignmentResponse)
@@ -139,6 +154,7 @@ async def create_assignment(data: ShiftAssignmentCreate, db: Annotated[AsyncSess
         employee_id=data.employee_id, position_id=data.position_id,
         date=data.date, shift_start=data.shift_start, shift_end=data.shift_end,
         status=data.status,
+        is_overnight=1 if data.is_overnight else 0,
     )
     db.add(a)
     await db.flush()
@@ -152,6 +168,7 @@ async def create_assignment(data: ShiftAssignmentCreate, db: Annotated[AsyncSess
         position_id=a.position_id, position_name=pos.name if pos else "",
         date=a.date, shift_start=a.shift_start, shift_end=a.shift_end,
         status=a.status, warning_flags=a.warning_flags,
+        is_overnight=bool(a.is_overnight),
         created_at=a.created_at, updated_at=a.updated_at,
     )
 
@@ -188,6 +205,7 @@ async def get_my_schedule(db: Annotated[AsyncSession, Depends(get_db)], emp: Ann
             position_id=a.position_id, position_name=pos.name if pos else "",
             date=a.date, shift_start=a.shift_start, shift_end=a.shift_end,
             status=a.status, warning_flags=a.warning_flags,
+            is_overnight=bool(a.is_overnight),
             created_at=a.created_at, updated_at=a.updated_at,
         ))
     return items

@@ -127,13 +127,17 @@ async def calculate_staffing(position_id: int, date_str: str, db: Annotated[Asyn
         required_headcount = math.ceil(daily_volume / mapping.productivity_value) if mapping.productivity_value > 0 else 0
         hourly_breakdown = None
     else:
-        # per_hour: distribute across 8 hour working day
+        # per_hour: distribute across slot hours evenly
         working_hours = 8
         required_headcount = math.ceil(daily_volume / (mapping.productivity_value * working_hours)) if mapping.productivity_value > 0 else 0
-        hourly_headcount = required_headcount / working_hours if working_hours > 0 else 0
+        total_person_hours = required_headcount * working_hours
+        # Distribute evenly across 9:00-17:00 (8 slots)
+        slot_count = 8
+        base = total_person_hours // slot_count
+        extra = total_person_hours % slot_count
         hourly_breakdown = [
-            {"hour": h, "headcount": required_headcount}
-            for h in range(9, 18)  # 9:00-17:00
+            {"hour": h, "headcount": base + (1 if (h - 9) < extra else 0)}
+            for h in range(9, 18)
         ]
 
     return CalculateStaffingResponse(

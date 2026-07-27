@@ -71,9 +71,15 @@ export default function LeaveManagementPage() {
     { title: "操作", key: "action", render: (_: any, record: any) => record.status === "pending" ? (
       <Space>
         <Button size="small" type="primary" onClick={() => review(record.id, "approved")}>批准</Button>
-        <Button size="small" danger onClick={() => {
+        <Button size="small" danger onClick={async () => {
           const reason = prompt("拒绝原因：");
-          if (reason !== null) review(record.id, "rejected");
+          if (reason !== null) {
+            try {
+              await api.put("/leaves/" + record.id + "/review", { status: "rejected", rejection_reason: reason });
+              message.success("已拒绝");
+              load();
+            } catch { message.error("操作失败"); }
+          }
         }}>拒绝</Button>
       </Space>
     ) : null },

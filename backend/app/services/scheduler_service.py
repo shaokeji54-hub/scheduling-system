@@ -19,7 +19,7 @@ class SchedulerService:
     async def prepare_data(db: AsyncSession, week_start: date) -> dict:
         """Load all data needed for scheduling for a week."""
         employees_result = await db.execute(
-            select(Employee).where(Employee.is_active == 1).options(selectinload(Employee.skills))
+            select(Employee).where(Employee.is_active == 1, Employee.role == "employee").options(selectinload(Employee.skills))
         )
         employees = employees_result.scalars().all()
 
@@ -123,6 +123,7 @@ class SchedulerService:
                     status="preliminary",
                     schedule_week_id=schedule_week.id,
                     warning_flags=",".join(a.warning_flags),
+                    is_overnight=1 if a.is_overnight else 0,
                 )
                 db.add(shift)
 

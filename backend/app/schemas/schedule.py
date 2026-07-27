@@ -9,6 +9,7 @@ class ShiftAssignmentCreate(BaseModel):
     shift_start: time
     shift_end: time
     status: str = "preliminary"
+    is_overnight: bool = False
 
 
 class ShiftAssignmentUpdate(BaseModel):
@@ -16,6 +17,7 @@ class ShiftAssignmentUpdate(BaseModel):
     shift_end: time | None = None
     position_id: int | None = None
     status: str | None = None
+    is_overnight: bool | None = None
 
 
 class ShiftAssignmentResponse(BaseModel):
@@ -30,6 +32,7 @@ class ShiftAssignmentResponse(BaseModel):
     shift_end: time
     status: str
     warning_flags: str
+    is_overnight: bool = False
     created_at: datetime | None = None
     updated_at: datetime | None = None
 

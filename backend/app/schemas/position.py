@@ -19,5 +19,6 @@ class PositionUpdate(PositionBase):
 class PositionResponse(PositionBase):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    skill_ids: list[int] = []
     created_at: datetime | None = None
     updated_at: datetime | None = None

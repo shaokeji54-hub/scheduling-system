@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="部门排班系统",
     description="Department Scheduling System",
-    version="1.1.0",
+    version="1.1.1",
     lifespan=lifespan,
 )
 
